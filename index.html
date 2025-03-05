@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Dashboard</title>
+  <style>
+    .weather-dashboard {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      border-radius: 8px;
+    }
+    .search-form {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .search-input {
+      width: 70%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    .search-button {
+      padding: 10px 15px;
+      margin-left: 10px;
+      border: none;
+      background-color: #007BFF;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .search-button:hover {
+      background-color: #0056b3;
+    }
+    .current-weather,
+    .forecast {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .forecast-container {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .forecast-item {
+      background-color: #fff;
+      padding: 10px;
+      border-radius: 4px;
+      width: 120px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Load React and ReactDOM from CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Load Babel for JSX transformation -->
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Your React code -->
+  <script type="text/babel">
+    const { useState } = React;
+    const API_KEY = ''; // Replace with your actual OpenWeatherMap API key
+
+    function WeatherDashboard() {
+      const [city, setCity] = useState('');
+      const [weatherData, setWeatherData] = useState(null);
+      const [forecastData, setForecastData] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState('');
+
+      const fetchWeather = async () => {
+        if (!city) return;
+        setLoading(true);
+        setError('');
+        try {
+          // Fetch current weather data
+          const weatherResponse = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
+          );
+          if (!weatherResponse.ok) {
+            throw new Error('Error fetching current weather data');
+          }
+          const currentData = await weatherResponse.json();
+          setWeatherData(currentData);
+
+          // Fetch forecast data
+          const forecastResponse = await fetch(
+            `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`
+          );
+          if (!forecastResponse.ok) {
+            throw new Error('Error fetching forecast data');
+          }
+          const forecastJson = await forecastResponse.json();
+
+          // Filter to get one forecast per day (using the 12:00:00 time slot as an example)
+          const dailyData = forecastJson.list.filter(item =>
+            item.dt_txt.includes("12:00:00")
+          );
+          setForecastData(dailyData);
+        } catch (err) {
+          setError(err.message);
+          setWeatherData(null);
+          setForecastData([]);
+        }
+        setLoading(false);
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        fetchWeather();
+      };
+
+      return (
+        <div className="weather-dashboard">
+          <form onSubmit={handleSubmit} className="search-form">
+            <input 
+              type="text" 
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Enter city name" 
+              className="search-input"
+            />
+            <button type="submit" className="search-button">Search</button>
+          </form>
+          {loading && <p>Loading...</p>}
+          {error && <p className="error">{error}</p>}
+          {weatherData && (
+            <div className="current-weather">
+              <h2>{weatherData.name} Weather</h2>
+              <p>Temperature: {weatherData.main.temp}°C</p>
+              <p>Description: {weatherData.weather[0].description}</p>
+              <p>Humidity: {weatherData.main.humidity}%</p>
+            </div>
+          )}
+          {forecastData.length > 0 && (
+            <div className="forecast">
+              <h2>5-Day Forecast</h2>
+              <div className="forecast-container">
+                {forecastData.map((day, index) => (
+                  <div key={index} className="forecast-item">
+                    <p>{new Date(day.dt_txt).toLocaleDateString()}</p>
+                    <p>Temp: {day.main.temp}°C</p>
+                    <p>{day.weather[0].description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<WeatherDashboard />);
+  </script>
+</body>
+</html>
